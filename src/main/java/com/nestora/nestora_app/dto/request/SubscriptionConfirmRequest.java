@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.dto.request;
 
-
 import com.nestora.nestora_app.enums.SubscriptionPlan;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +13,9 @@ public class SubscriptionConfirmRequest {
 
     @NotBlank(message = "Razorpay payment ID is required")
     private String razorpayPaymentId;
+
+    @NotBlank(message = "Razorpay signature is required")
+    private String razorpaySignature;
 
     @NotNull(message = "Plan is required")
     private SubscriptionPlan plan;

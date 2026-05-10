@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.controller;
 
-
 import com.nestora.nestora_app.dto.request.OwnerApplyRequest;
 import com.nestora.nestora_app.dto.request.SubscriptionBuyRequest;
 import com.nestora.nestora_app.dto.request.SubscriptionConfirmRequest;
@@ -37,24 +36,22 @@ public class OwnerController {
         String message = ownerService.applyAsOwner(
                 currentUser, request, aadharDoc, panDoc, addressProof
         );
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(message));
     }
 
     @GetMapping("/my-profile")
     public ResponseEntity<ApiResponse<OwnerProfileResponse>> getMyProfile(
             @AuthenticationPrincipal User currentUser) {
-
         return ResponseEntity.ok(
-                ApiResponse.success("Profile fetched", ownerService.getMyProfile(currentUser))
+                ApiResponse.success("Profile fetched",
+                        ownerService.getMyProfile(currentUser))
         );
     }
 
     @GetMapping("/verification-status")
     public ResponseEntity<ApiResponse<VerificationStatusResponse>> getVerificationStatus(
             @AuthenticationPrincipal User currentUser) {
-
         return ResponseEntity.ok(
                 ApiResponse.success("Status fetched",
                         ownerService.getVerificationStatus(currentUser))
@@ -65,7 +62,6 @@ public class OwnerController {
     public ResponseEntity<ApiResponse<SubscriptionOrderResponse>> buySubscription(
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody SubscriptionBuyRequest request) {
-
         return ResponseEntity.ok(
                 ApiResponse.success("Order created",
                         ownerService.buySubscription(currentUser, request))
@@ -76,7 +72,6 @@ public class OwnerController {
     public ResponseEntity<ApiResponse<SubscriptionDetailsResponse>> confirmSubscription(
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody SubscriptionConfirmRequest request) {
-
         return ResponseEntity.ok(
                 ApiResponse.success("Subscription activated",
                         ownerService.confirmSubscription(currentUser, request))
@@ -86,10 +81,29 @@ public class OwnerController {
     @GetMapping("/subscription/details")
     public ResponseEntity<ApiResponse<SubscriptionDetailsResponse>> getSubscriptionDetails(
             @AuthenticationPrincipal User currentUser) {
-
         return ResponseEntity.ok(
                 ApiResponse.success("Subscription details fetched",
                         ownerService.getSubscriptionDetails(currentUser))
+        );
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<ApiResponse<OwnerDashboardResponse>> getDashboard(
+            @AuthenticationPrincipal User currentUser) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Dashboard fetched",
+                        ownerService.getMyDashboard(currentUser))
+        );
+    }
+
+    @PostMapping("/properties/{propertyId}/feature")
+    public ResponseEntity<ApiResponse<String>> buyFeaturedListing(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long propertyId,
+            @RequestParam Integer days) {
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        ownerService.buyFeaturedListing(currentUser, propertyId, days))
         );
     }
 }

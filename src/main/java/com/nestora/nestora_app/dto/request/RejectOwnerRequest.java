@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class BookingRespondRequest {
+public class RejectOwnerRequest {
 
-    @NotBlank(message = "Response message is required")
-    private String response;
+    @NotBlank(message = "Rejection reason is required")
+    private String reason;
 }

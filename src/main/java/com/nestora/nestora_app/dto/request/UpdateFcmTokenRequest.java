@@ -5,8 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class BookingRespondRequest {
+public class UpdateFcmTokenRequest {
 
-    @NotBlank(message = "Response message is required")
-    private String response;
+    @NotBlank(message = "FCM token is required")
+    private String fcmToken;
 }

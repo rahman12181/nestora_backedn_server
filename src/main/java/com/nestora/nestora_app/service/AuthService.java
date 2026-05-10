@@ -197,14 +197,12 @@ public class AuthService {
 
 
 
-    private void sendOtp(String email, OtpType type) {
+    private void sendOtp(String email, String phone, OtpType type) {
         // Purane OTP delete karo
         otpRepository.deleteAllByEmailAndType(email, type);
 
-        // Naya OTP generate karo
         String otp = generateOtp();
 
-        // DB me save karo
         OtpVerification otpVerification = OtpVerification.builder()
                 .email(email)
                 .otp(otp)
@@ -215,8 +213,13 @@ public class AuthService {
 
         otpRepository.save(otpVerification);
 
-        //send email
+        // Email OTP bhejo
         emailService.sendOtpEmail(email, otp, type.name());
+
+        // SMS OTP bhi bhejo agar phone hai
+        if (phone != null && !phone.isEmpty()) {
+            smsService.sendOtpSms(phone, otp);
+        }
     }
 
     private void validateOtp(String email, String otp, OtpType type) {

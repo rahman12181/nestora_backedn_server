@@ -57,6 +57,9 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "fcm_token", length = 500)
+    private String fcmToken;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

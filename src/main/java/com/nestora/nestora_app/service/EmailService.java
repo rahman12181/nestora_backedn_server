@@ -54,4 +54,26 @@ public class EmailService {
             throw new RuntimeException("Failed to send OTP email. Please try again.");
         }
     }
+
+    public void sendSubscriptionReminderEmail(String toEmail,
+                                              String name,
+                                              int daysLeft,
+                                              String plan) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Nestora — Subscription Expiring in " + daysLeft + " Days");
+            message.setText(
+                    "Hi " + name + ",\n\n" +
+                            "Your " + plan + " subscription is expiring in " + daysLeft + " days.\n\n" +
+                            "Renew now to keep your property listings visible to students.\n\n" +
+                            "Renew here: https://app.nestora.in/subscription\n\n" +
+                            "Team Nestora"
+            );
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Reminder email failed: {}", e.getMessage());
+        }
+    }
 }

@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.repository;
 
-
 import com.nestora.nestora_app.entity.OwnerProfile;
 import com.nestora.nestora_app.entity.Property;
 import com.nestora.nestora_app.enums.GenderAllowed;
@@ -24,15 +23,18 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
         AND p.isActive = true
         AND (:city IS NULL OR LOWER(p.city) = LOWER(:city))
         AND (:type IS NULL OR p.propertyType = :type)
-        AND (:gender IS NULL OR p.genderAllowed = :gender OR p.genderAllowed = 'BOTH')
+        AND (:gender IS NULL OR p.genderAllowed = :gender
+             OR p.genderAllowed = 'BOTH')
         AND (:minRent IS NULL OR p.monthlyRentMin >= :minRent)
         AND (:maxRent IS NULL OR p.monthlyRentMax <= :maxRent)
+        AND (:pincode IS NULL OR p.pincode = :pincode)
     """)
     List<Property> searchProperties(
             @Param("city") String city,
             @Param("type") PropertyType type,
             @Param("gender") GenderAllowed gender,
             @Param("minRent") BigDecimal minRent,
-            @Param("maxRent") BigDecimal maxRent
+            @Param("maxRent") BigDecimal maxRent,
+            @Param("pincode") String pincode
     );
 }

@@ -88,6 +88,15 @@ public class Property {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "view_count")
+    private Long viewCount = 0L;
+
+    @Column(name = "is_featured")
+    private Boolean isFeatured = false;
+
+    @Column(name = "featured_until")
+    private LocalDateTime featuredUntil;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
