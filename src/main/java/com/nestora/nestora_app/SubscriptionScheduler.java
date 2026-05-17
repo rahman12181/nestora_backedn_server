@@ -5,6 +5,7 @@ import com.nestora.nestora_app.entity.OwnerProfile;
 import com.nestora.nestora_app.enums.NotificationType;
 import com.nestora.nestora_app.enums.SubscriptionStatus;
 import com.nestora.nestora_app.repository.OwnerProfileRepository;
+import com.nestora.nestora_app.repository.TokenBlacklistRepository;
 import com.nestora.nestora_app.service.EmailService;
 import com.nestora.nestora_app.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class SubscriptionScheduler {
     private final OwnerProfileRepository ownerProfileRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final TokenBlacklistRepository tokenBlacklistRepository;
 
     // Har roz subah 9 baje check karo
     @Scheduled(cron = "0 0 9 * * *")
@@ -95,5 +97,12 @@ public class SubscriptionScheduler {
                         owner.getUser().getEmail());
             }
         }
+    }
+
+    // Har raat 2 baje expired tokens delete karo
+    @Scheduled(cron = "0 0 2 * * *")
+    public void cleanupExpiredTokens() {
+        tokenBlacklistRepository.deleteExpiredTokens(LocalDateTime.now());
+        log.info("Expired tokens cleaned up");
     }
 }

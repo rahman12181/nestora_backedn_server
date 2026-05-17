@@ -34,7 +34,7 @@ public class Report {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "ENUM('PENDING','REVIEWED','RESOLVED')")
     private String status = "PENDING";
 
     @Column(name = "created_at")

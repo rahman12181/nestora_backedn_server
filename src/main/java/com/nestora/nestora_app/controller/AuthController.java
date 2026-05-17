@@ -3,12 +3,19 @@ package com.nestora.nestora_app.controller;
 import com.nestora.nestora_app.dto.request.*;
 import com.nestora.nestora_app.dto.response.ApiResponse;
 import com.nestora.nestora_app.dto.response.AuthResponse;
+import com.nestora.nestora_app.entity.TokenBlacklist;
+import com.nestora.nestora_app.entity.User;
+import com.nestora.nestora_app.repository.TokenBlacklistRepository;
 import com.nestora.nestora_app.service.AuthService;
+import com.nestora.nestora_app.service.JwtService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
 
 @RestController
 @RequestMapping("/auth")
@@ -16,6 +23,9 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private  final JwtService jwtService;
+    private  final TokenBlacklistRepository tokenBlacklistRepository;
+
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(
@@ -78,5 +88,26 @@ public class AuthController {
 
         AuthResponse response = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(ApiResponse.success("Token refreshed", response));
+    }
+
+    @PostMapping("/auth/logout")
+    public ResponseEntity<ApiResponse<String>> logout(
+            @AuthenticationPrincipal User currentUser,
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = authHeader.substring(7);
+        Date expiry = jwtService.extractExpiration(token);
+
+        TokenBlacklist blacklisted = TokenBlacklist.builder()
+                .token(token)
+                .userId(currentUser.getId())
+                .expiresAt(expiry.toInstant()
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime())
+                .build();
+
+        tokenBlacklistRepository.save(blacklisted);
+
+        return ResponseEntity.ok(ApiResponse.success("Logged out successfully"));
     }
 }

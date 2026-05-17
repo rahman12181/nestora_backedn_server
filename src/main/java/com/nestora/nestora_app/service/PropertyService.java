@@ -22,6 +22,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.nestora.nestora_app.repository.BookingRequestRepository;
+import com.nestora.nestora_app.repository.ReviewRepository;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
+import com.nestora.nestora_app.dto.response.ApiResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,7 +43,8 @@ public class PropertyService {
     private final RoomRepository roomRepository;
     private final OwnerProfileRepository ownerProfileRepository;
     private final CloudinaryService cloudinaryService;
-
+    private final BookingRequestRepository bookingRequestRepository;
+    private final ReviewRepository reviewRepository;
     // =============================================
     // ADD PROPERTY
     // =============================================
@@ -491,5 +498,255 @@ public class PropertyService {
                 .hasAttachedBathroom(room.getHasAttachedBathroom())
                 .description(room.getDescription())
                 .build();
+    }
+
+    // =============================================
+// ADMIN — Complete Property Detail
+// =============================================
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAdminPropertyDetail(
+            Long propertyId) {
+
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new AppException(
+                        "Property not found", HttpStatus.NOT_FOUND
+                ));
+
+        OwnerProfile owner = property.getOwner();
+        User ownerUser = owner.getUser();
+
+        // Tab 1 — Overview
+        Map<String, Object> overview = new LinkedHashMap<>();
+        overview.put("propertyId", property.getId());
+        overview.put("title", property.getTitle());
+        overview.put("description", property.getDescription());
+        overview.put("propertyType", property.getPropertyType());
+        overview.put("genderAllowed", property.getGenderAllowed());
+        overview.put("addressLine", property.getAddressLine());
+        overview.put("city", property.getCity());
+        overview.put("state", property.getState());
+        overview.put("pincode", property.getPincode());
+        overview.put("latitude", property.getLatitude());
+        overview.put("longitude", property.getLongitude());
+        overview.put("monthlyRentMin", property.getMonthlyRentMin());
+        overview.put("monthlyRentMax", property.getMonthlyRentMax());
+        overview.put("securityDeposit", property.getSecurityDeposit());
+        overview.put("isNegotiable", property.getIsNegotiable());
+        overview.put("totalRooms", property.getTotalRooms());
+        overview.put("availableRooms", property.getAvailableRooms());
+        overview.put("occupancyStatus", property.getOccupancyStatus());
+        overview.put("isPublished", property.getIsPublished());
+        overview.put("isFeatured", property.getIsFeatured());
+        overview.put("featuredUntil", property.getFeaturedUntil());
+        overview.put("viewCount", property.getViewCount());
+        overview.put("amenities", amenityRepository.findByProperty(property)
+                .stream()
+                .map(PropertyAmenity::getAmenity)
+                .collect(Collectors.toList()));
+        overview.put("createdAt", property.getCreatedAt());
+
+        // Tab 2 — Owner Complete Detail
+        Map<String, Object> ownerDetail = new LinkedHashMap<>();
+        ownerDetail.put("ownerId", owner.getId());
+        ownerDetail.put("userId", ownerUser.getId());
+        ownerDetail.put("displayId", ownerUser.getDisplayId());
+        ownerDetail.put("name", ownerUser.getName());
+        ownerDetail.put("email", ownerUser.getEmail());
+        ownerDetail.put("phone", ownerUser.getPhone());
+        ownerDetail.put("profilePic", ownerUser.getProfilePic());
+        ownerDetail.put("businessName", owner.getBusinessName());
+        ownerDetail.put("aadharNumber", owner.getAadharNumber());
+        ownerDetail.put("panNumber", owner.getPanNumber());
+        ownerDetail.put("aadharDocUrl", owner.getAadharDocUrl());
+        ownerDetail.put("panDocUrl", owner.getPanDocUrl());
+        ownerDetail.put("addressProofUrl", owner.getAddressProofUrl());
+        ownerDetail.put("verificationStatus", owner.getVerificationStatus());
+        ownerDetail.put("rejectionReason", owner.getRejectionReason());
+        ownerDetail.put("verifiedAt", owner.getVerifiedAt());
+        ownerDetail.put("subscriptionPlan", owner.getSubscriptionPlan());
+        ownerDetail.put("subscriptionStatus", owner.getSubscriptionStatus());
+        ownerDetail.put("subscriptionStart", owner.getSubscriptionStart());
+        ownerDetail.put("subscriptionEnd", owner.getSubscriptionEnd());
+        ownerDetail.put("monthlyFee", owner.getMonthlyFee());
+        ownerDetail.put("totalProperties",
+                propertyRepository.findByOwner(owner).size());
+        ownerDetail.put("memberSince", ownerUser.getCreatedAt());
+
+        // Tab 3 — Rooms
+        List<Map<String, Object>> rooms = roomRepository
+                .findByProperty(property)
+                .stream()
+                .map(room -> {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("roomId", room.getId());
+                    r.put("roomNumber", room.getRoomNumber());
+                    r.put("roomType", room.getRoomType());
+                    r.put("floorNumber", room.getFloorNumber());
+                    r.put("monthlyRent", room.getMonthlyRent());
+                    r.put("capacity", room.getCapacity());
+                    r.put("occupiedCount", room.getOccupiedCount());
+                    r.put("status", room.getStatus());
+                    r.put("hasAc", room.getHasAc());
+                    r.put("hasAttachedBathroom", room.getHasAttachedBathroom());
+                    r.put("description", room.getDescription());
+                    return r;
+                })
+                .collect(Collectors.toList());
+
+        // Tab 4 — Media
+        List<Map<String, Object>> media = mediaRepository
+                .findByPropertyOrderBySortOrderAsc(property)
+                .stream()
+                .map(m -> {
+                    Map<String, Object> med = new LinkedHashMap<>();
+                    med.put("mediaId", m.getId());
+                    med.put("mediaType", m.getMediaType());
+                    med.put("url", m.getUrl());
+                    med.put("thumbnailUrl", m.getThumbnailUrl());
+                    med.put("durationSec", m.getDurationSec());
+                    med.put("isPrimary", m.getIsPrimary());
+                  //  med.put("is360", m.getIs360());
+                    med.put("sortOrder", m.getSortOrder());
+                    return med;
+                })
+                .collect(Collectors.toList());
+
+        // Tab 5 — Reviews
+        List<Review> reviewList = reviewRepository
+                .findByPropertyAndIsVisibleTrue(property);
+
+        double avgRating = reviewList.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
+
+        List<Map<String, Object>> reviews = reviewList.stream()
+                .map(rev -> {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("reviewId", rev.getId());
+                    r.put("userName", rev.getUser().getName());
+                    r.put("userEmail", rev.getUser().getEmail());
+                    r.put("userDisplayId", rev.getUser().getDisplayId());
+                    r.put("rating", rev.getRating());
+                    r.put("comment", rev.getComment());
+                    r.put("isVisible", rev.getIsVisible());
+                    r.put("createdAt", rev.getCreatedAt());
+                    return r;
+                })
+                .collect(Collectors.toList());
+
+        Map<String, Object> reviewsTab = new LinkedHashMap<>();
+        reviewsTab.put("averageRating",
+                Math.round(avgRating * 10.0) / 10.0);
+        reviewsTab.put("totalReviews", reviewList.size());
+        reviewsTab.put("reviews", reviews);
+
+        // Booking Stats
+        List<com.nestora.nestora_app.entity.BookingRequest> bookings =
+                bookingRequestRepository.findByProperty(property);
+
+        Map<String, Object> bookingStats = new LinkedHashMap<>();
+        bookingStats.put("totalRequests", bookings.size());
+        bookingStats.put("pendingRequests", bookings.stream()
+                .filter(b -> b.getStatus() ==
+                        com.nestora.nestora_app.enums.BookingStatus.PENDING)
+                .count());
+        bookingStats.put("acceptedRequests", bookings.stream()
+                .filter(b -> b.getStatus() ==
+                        com.nestora.nestora_app.enums.BookingStatus.ACCEPTED)
+                .count());
+        bookingStats.put("rejectedRequests", bookings.stream()
+                .filter(b -> b.getStatus() ==
+                        com.nestora.nestora_app.enums.BookingStatus.REJECTED)
+                .count());
+
+        // Final Response — Sab ek saath
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("overview", overview);
+        response.put("owner", ownerDetail);
+        response.put("rooms", rooms);
+        response.put("media", media);
+        response.put("reviews", reviewsTab);
+        response.put("bookingStats", bookingStats);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("Property detail fetched", response)
+        );
+    }
+
+    // =============================================
+// ADMIN — All Properties with Owner Info
+// =============================================
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllPropertiesForAdmin() {
+
+        List<Map<String, Object>> properties = propertyRepository.findAll()
+                .stream()
+                .map(p -> {
+                    OwnerProfile owner = p.getOwner();
+                    User ownerUser = owner.getUser();
+
+                    // Cover image
+                    String coverImage = mediaRepository
+                            .findByPropertyOrderBySortOrderAsc(p)
+                            .stream()
+                            .filter(m -> Boolean.TRUE.equals(m.getIsPrimary()))
+                            .findFirst()
+                            .map(PropertyMedia::getUrl)
+                            .orElse(null);
+
+                    // Reviews count
+                    int reviewCount = reviewRepository
+                            .findByPropertyAndIsVisibleTrue(p).size();
+
+                    Map<String, Object> prop = new LinkedHashMap<>();
+                    prop.put("propertyId", p.getId());
+                    prop.put("title", p.getTitle());
+                    prop.put("propertyType", p.getPropertyType());
+                    prop.put("genderAllowed", p.getGenderAllowed());
+                    prop.put("city", p.getCity());
+                    prop.put("state", p.getState());
+                    prop.put("pincode", p.getPincode());
+                    prop.put("monthlyRentMin", p.getMonthlyRentMin());
+                    prop.put("monthlyRentMax", p.getMonthlyRentMax());
+                    prop.put("totalRooms", p.getTotalRooms());
+                    prop.put("availableRooms", p.getAvailableRooms());
+                    prop.put("isPublished", p.getIsPublished());
+                    prop.put("isFeatured", p.getIsFeatured());
+                    prop.put("viewCount", p.getViewCount());
+                    prop.put("coverImage", coverImage);
+                    prop.put("totalReviews", reviewCount);
+                    prop.put("createdAt", p.getCreatedAt());
+
+                    // Owner summary
+                    Map<String, Object> ownerSummary = new LinkedHashMap<>();
+                    ownerSummary.put("ownerId", owner.getId());
+                    ownerSummary.put("userId", ownerUser.getId());
+                    ownerSummary.put("name", ownerUser.getName());
+                    ownerSummary.put("email", ownerUser.getEmail());
+                    ownerSummary.put("phone", ownerUser.getPhone());
+                    ownerSummary.put("displayId", ownerUser.getDisplayId());
+                    ownerSummary.put("businessName", owner.getBusinessName());
+                    ownerSummary.put("verificationStatus",
+                            owner.getVerificationStatus());
+                    ownerSummary.put("subscriptionPlan",
+                            owner.getSubscriptionPlan());
+                    ownerSummary.put("subscriptionStatus",
+                            owner.getSubscriptionStatus());
+
+                    prop.put("owner", ownerSummary);
+                    return prop;
+                })
+                .sorted((a, b) -> {
+                    // Pending pehle
+                    boolean aPublished = (Boolean) a.get("isPublished");
+                    boolean bPublished = (Boolean) b.get("isPublished");
+                    if (!aPublished && bPublished) return -1;
+                    if (aPublished && !bPublished) return 1;
+                    return 0;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("All properties fetched", properties)
+        );
     }
 }

@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.repository;
 
-
 import com.nestora.nestora_app.entity.Report;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;

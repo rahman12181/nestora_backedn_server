@@ -17,6 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
 public class User implements UserDetails {
 
     @Id
@@ -60,6 +61,12 @@ public class User implements UserDetails {
     @Column(name = "fcm_token", length = 500)
     private String fcmToken;
 
+    @Column(name = "failed_login_attempts")
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "account_locked_until")
+    private LocalDateTime accountLockedUntil;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -75,7 +82,8 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of(new SimpleGrantedAuthority(role.name()));
+        // role.name() → "STUDENT", "OWNER", "ADMIN"
     }
 
     @Override
@@ -99,6 +107,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive != null && isActive;
+        return Boolean.TRUE.equals(isActive);
     }
+
 }

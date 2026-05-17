@@ -5,6 +5,8 @@ import com.nestora.nestora_app.dto.request.*;
 import com.nestora.nestora_app.dto.response.*;
 import com.nestora.nestora_app.entity.Report;
 import com.nestora.nestora_app.entity.User;
+import com.nestora.nestora_app.repository.ReportRepository;
+import com.nestora.nestora_app.repository.UserRepository;
 import com.nestora.nestora_app.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final ReportRepository reportRepository;
+    private final UserRepository userRepository;
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(

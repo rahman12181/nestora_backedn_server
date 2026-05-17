@@ -36,4 +36,7 @@ public class PropertySearchResponse {
     private Integer totalReviews;
     private Boolean isFeatured;
     private Long viewCount;
+    private Long ownerUserId;
+    private String ownerName;
+    private String ownerDisplayId;
 }

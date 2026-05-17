@@ -5,14 +5,19 @@ import com.nestora.nestora_app.dto.request.RejectOwnerRequest;
 import com.nestora.nestora_app.dto.response.*;
 import com.nestora.nestora_app.entity.Report;
 import com.nestora.nestora_app.exception.AppException;
+import com.nestora.nestora_app.repository.ReportRepository;
 import com.nestora.nestora_app.service.AdminService;
+import com.nestora.nestora_app.service.PropertyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import java.util.stream.Collectors;
+import com.nestora.nestora_app.repository.PropertyRepository;
+import java.util.stream.Collectors;
+import com.nestora.nestora_app.service.PropertyService;
 
 @RestController
 @RequestMapping("/admin")
@@ -20,6 +25,9 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final ReportRepository reportRepository;
+    private final PropertyRepository propertyRepository;
+    private final PropertyService propertyService;
 
     // =============================================
     // OWNER MANAGEMENT
@@ -126,7 +134,7 @@ public class AdminController {
         );
     }
 
-    @GetMapping("/admin/reports")
+    @GetMapping("/reports")
     public ResponseEntity<ApiResponse<List<Report>>> getPendingReports() {
         return ResponseEntity.ok(
                 ApiResponse.success("Reports fetched",
@@ -134,7 +142,7 @@ public class AdminController {
         );
     }
 
-    @PatchMapping("/admin/reports/{reportId}/resolve")
+    @PatchMapping("/reports/{reportId}/resolve")
     public ResponseEntity<ApiResponse<String>> resolveReport(
             @PathVariable Long reportId) {
 
@@ -148,4 +156,38 @@ public class AdminController {
 
         return ResponseEntity.ok(ApiResponse.success("Report resolved"));
     }
+
+    @GetMapping("/properties/{propertyId}/detail")
+    public ResponseEntity<?> getPropertyDetail(
+            @PathVariable Long propertyId) {
+        return propertyService.getAdminPropertyDetail(propertyId);
+    }
+
+    @GetMapping("/properties/all")
+    public ResponseEntity<?> getAllProperties() {
+        return propertyService.getAllPropertiesForAdmin();
+    }
+
+    /*// All Properties (Admin)
+    @GetMapping("/properties/all")
+    public ResponseEntity<ApiResponse<List<AdminPropertyResponse>>> getAllProperties() {
+        List<AdminPropertyResponse> properties = propertyRepository.findAll()
+                .stream()
+                .map(p -> AdminPropertyResponse.builder()
+                        .propertyId(p.getId())
+                        .title(p.getTitle())
+                        .ownerName(p.getOwner().getUser().getName())
+                        .ownerDisplayId(p.getOwner().getUser().getDisplayId())
+                        .city(p.getCity())
+                        .state(p.getState())
+                        .propertyType(p.getPropertyType())
+                        .isPublished(p.getIsPublished())
+                        .createdAt(p.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("All properties fetched", properties)
+        );
+    }*/
 }

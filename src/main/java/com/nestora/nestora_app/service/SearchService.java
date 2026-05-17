@@ -249,12 +249,15 @@ public class SearchService {
                 .occupancyStatus(p.getOccupancyStatus())
                 .coverImage(coverImage)
                 .amenities(amenities)
+                .ownerUserId(p.getOwner().getUser().getId())
+                .ownerName(p.getOwner().getUser().getName())
+                .ownerDisplayId(p.getOwner().getUser().getDisplayId())
                 .isVerifiedOwner(isVerified)
                 .distanceKm(distance)
                 .averageRating(Math.round(avgRating * 10.0) / 10.0)
                 .totalReviews(reviews.size())
-                .isFeatured(Boolean.TRUE.equals(p.getIsFeatured()))   // NEW
-                .viewCount(p.getViewCount() != null ? p.getViewCount() : 0L) // NEW
+                .isFeatured(Boolean.TRUE.equals(p.getIsFeatured()))
+                .viewCount(p.getViewCount() != null ? p.getViewCount() : 0L)
                 .build();
     }
 

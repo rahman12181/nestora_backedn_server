@@ -1,6 +1,10 @@
 package com.nestora.nestora_app.service;
 
-import com.nestora.nestora_app.dto.request.*;
+import com.nestora.nestora_app.dto.request.ForgotPasswordRequest;
+import com.nestora.nestora_app.dto.request.LoginRequest;
+import com.nestora.nestora_app.dto.request.RegisterRequest;
+import com.nestora.nestora_app.dto.request.ResetPasswordRequest;
+import com.nestora.nestora_app.dto.request.VerifyOtpRequest;
 import com.nestora.nestora_app.dto.response.AuthResponse;
 import com.nestora.nestora_app.entity.OtpVerification;
 import com.nestora.nestora_app.entity.OtpVerification.OtpType;
@@ -14,12 +18,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Random;
 
 @Service
@@ -33,11 +39,14 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
+    private final SmsService smsService;
 
     @Value("${otp.expiry.minutes}")
     private int otpExpiryMinutes;
 
-    //register
+    // =============================================
+    // REGISTER
+    // =============================================
     @Transactional
     public String register(RegisterRequest request) {
 
@@ -47,7 +56,9 @@ public class AuthService {
 
         if (request.getPhone() != null &&
                 userRepository.existsByPhone(request.getPhone())) {
-            throw new AppException("Phone number already registered", HttpStatus.CONFLICT);
+            throw new AppException(
+                    "Phone number already registered", HttpStatus.CONFLICT
+            );
         }
 
         User user = User.builder()
@@ -65,13 +76,20 @@ public class AuthService {
         saved.setDisplayId(generateDisplayId(saved.getId()));
         userRepository.save(saved);
 
-        // CHANGE: request.getEmail() ki jagah saved.getEmail() use karo
-        sendOtp(saved.getEmail(), OtpType.REGISTER);
+        // OTP bhejo — email + phone
+        sendOtp(
+                saved.getEmail(),
+                saved.getPhone(),
+                OtpType.REGISTER
+        );
 
-        return "OTP sent to " + request.getEmail() + ". Please verify to complete registration.";
+        return "OTP sent to " + request.getEmail() +
+                ". Please verify to complete registration.";
     }
 
-    //verify otp
+    // =============================================
+    // VERIFY OTP
+    // =============================================
     @Transactional
     public AuthResponse verifyRegisterOtp(VerifyOtpRequest request) {
 
@@ -80,10 +98,12 @@ public class AuthService {
         validateOtp(email, request.getOtp(), OtpType.REGISTER);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(
+                        "User not found", HttpStatus.NOT_FOUND
+                ));
 
         user.setIsActive(true);
-        user.setIsEmailVerified(true); // NAYA — yeh add karo
+        user.setIsEmailVerified(true);
         userRepository.save(user);
 
         String accessToken = jwtService.generateAccessToken(user);
@@ -92,14 +112,30 @@ public class AuthService {
         return buildAuthResponse(user, accessToken, refreshToken);
     }
 
-    //login
+    // =============================================
+    // LOGIN
+    // =============================================
     public AuthResponse login(LoginRequest request) {
 
-        // Pehle check karo user active hai ya nahi
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(
                         "Invalid email or password", HttpStatus.UNAUTHORIZED
                 ));
+
+        // Account locked check
+        if (user.getAccountLockedUntil() != null &&
+                user.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
+
+            long minutesLeft = ChronoUnit.MINUTES.between(
+                    LocalDateTime.now(), user.getAccountLockedUntil()
+            );
+
+            throw new AppException(
+                    "Account locked due to too many failed attempts. " +
+                            "Try again after " + minutesLeft + " minutes.",
+                    HttpStatus.FORBIDDEN
+            );
+        }
 
         if (!user.getIsActive()) {
             throw new AppException(
@@ -108,12 +144,45 @@ public class AuthService {
             );
         }
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (BadCredentialsException e) {
+            // Failed attempt increment karo
+            int attempts = (user.getFailedLoginAttempts() == null)
+                    ? 0 : user.getFailedLoginAttempts();
+            attempts++;
+            user.setFailedLoginAttempts(attempts);
+
+            // 5 attempts ke baad 30 min lock
+            if (attempts >= 5) {
+                user.setAccountLockedUntil(
+                        LocalDateTime.now().plusMinutes(30)
+                );
+                user.setFailedLoginAttempts(0);
+                userRepository.save(user);
+                throw new AppException(
+                        "Too many failed attempts. Account locked for 30 minutes.",
+                        HttpStatus.FORBIDDEN
+                );
+            }
+
+            userRepository.save(user);
+            throw new AppException(
+                    "Invalid email or password. " +
+                            (5 - attempts) + " attempts remaining.",
+                    HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        // Success — reset attempts
+        user.setFailedLoginAttempts(0);
+        user.setAccountLockedUntil(null);
+        userRepository.save(user);
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
@@ -121,35 +190,42 @@ public class AuthService {
         return buildAuthResponse(user, accessToken, refreshToken);
     }
 
-    //forget password
+    // =============================================
+    // FORGOT PASSWORD
+    // =============================================
     @Transactional
     public String forgotPassword(ForgotPasswordRequest request) {
 
         String email = request.getEmail().toLowerCase().trim();
 
-        // Email exist karta hai?
         if (!userRepository.existsByEmail(email)) {
-            // Security best practice — same message dono cases me
             return "If this email is registered, you will receive an OTP.";
         }
 
-        sendOtp(email, OtpType.FORGOT_PASSWORD);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(
+                        "User not found", HttpStatus.NOT_FOUND
+                ));
+
+        sendOtp(email, user.getPhone(), OtpType.FORGOT_PASSWORD);
 
         return "OTP sent to your email for password reset.";
     }
 
-    //reset password
+    // =============================================
+    // RESET PASSWORD
+    // =============================================
     @Transactional
     public String resetPassword(ResetPasswordRequest request) {
 
         String email = request.getEmail().toLowerCase().trim();
 
-        // OTP validate karo
         validateOtp(email, request.getOtp(), OtpType.FORGOT_PASSWORD);
 
-        // Password update karo
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(
+                        "User not found", HttpStatus.NOT_FOUND
+                ));
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
@@ -157,17 +233,22 @@ public class AuthService {
         return "Password reset successfully. Please login with your new password.";
     }
 
-    //refresh token
+    // =============================================
+    // REFRESH TOKEN
+    // =============================================
     public AuthResponse refreshToken(String refreshToken) {
 
         String email = jwtService.extractUsername(refreshToken);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException("User not found", HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new AppException(
+                        "User not found", HttpStatus.NOT_FOUND
+                ));
 
         if (!jwtService.isTokenValid(refreshToken, user)) {
             throw new AppException(
-                    "Invalid or expired refresh token", HttpStatus.UNAUTHORIZED
+                    "Invalid or expired refresh token",
+                    HttpStatus.UNAUTHORIZED
             );
         }
 
@@ -177,7 +258,9 @@ public class AuthService {
         return buildAuthResponse(user, newAccessToken, newRefreshToken);
     }
 
-    //resend otp
+    // =============================================
+    // RESEND OTP
+    // =============================================
     @Transactional
     public String resendOtp(ForgotPasswordRequest request, String type) {
 
@@ -187,22 +270,32 @@ public class AuthService {
             throw new AppException("Email not registered", HttpStatus.NOT_FOUND);
         }
 
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(
+                        "User not found", HttpStatus.NOT_FOUND
+                ));
+
         OtpType otpType = type.equals("REGISTER") ?
                 OtpType.REGISTER : OtpType.FORGOT_PASSWORD;
 
-        sendOtp(email, otpType);
+        sendOtp(email, user.getPhone(), otpType);
 
         return "OTP resent successfully.";
     }
 
-
+    // =============================================
+    // PRIVATE HELPERS
+    // =============================================
 
     private void sendOtp(String email, String phone, OtpType type) {
+
         // Purane OTP delete karo
         otpRepository.deleteAllByEmailAndType(email, type);
 
+        // Naya OTP generate karo
         String otp = generateOtp();
 
+        // DB me save karo
         OtpVerification otpVerification = OtpVerification.builder()
                 .email(email)
                 .otp(otp)
@@ -213,10 +306,10 @@ public class AuthService {
 
         otpRepository.save(otpVerification);
 
-        // Email OTP bhejo
+        // Email bhejo
         emailService.sendOtpEmail(email, otp, type.name());
 
-        // SMS OTP bhi bhejo agar phone hai
+        // SMS bhejo agar phone hai
         if (phone != null && !phone.isEmpty()) {
             smsService.sendOtpSms(phone, otp);
         }
@@ -225,24 +318,28 @@ public class AuthService {
     private void validateOtp(String email, String otp, OtpType type) {
 
         OtpVerification otpRecord = otpRepository
-                .findTopByEmailAndTypeAndIsUsedFalseOrderByCreatedAtDesc(email, type)
+                .findTopByEmailAndTypeAndIsUsedFalseOrderByCreatedAtDesc(
+                        email, type
+                )
                 .orElseThrow(() -> new AppException(
-                        "OTP not found. Please request a new OTP.", HttpStatus.BAD_REQUEST
+                        "OTP not found. Please request a new OTP.",
+                        HttpStatus.BAD_REQUEST
                 ));
 
-        // Expire ho gaya?
         if (otpRecord.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new AppException(
-                    "OTP has expired. Please request a new OTP.", HttpStatus.BAD_REQUEST
+                    "OTP has expired. Please request a new OTP.",
+                    HttpStatus.BAD_REQUEST
             );
         }
 
-        // Wrong OTP?
         if (!otpRecord.getOtp().equals(otp)) {
-            throw new AppException("Invalid OTP. Please try again.", HttpStatus.BAD_REQUEST);
+            throw new AppException(
+                    "Invalid OTP. Please try again.",
+                    HttpStatus.BAD_REQUEST
+            );
         }
 
-        // Mark as used
         otpRecord.setIsUsed(true);
         otpRepository.save(otpRecord);
     }
@@ -251,6 +348,10 @@ public class AuthService {
         Random random = new Random();
         int otp = 100000 + random.nextInt(900000);
         return String.valueOf(otp);
+    }
+
+    private String generateDisplayId(Long userId) {
+        return "NST-" + String.format("%06d", userId);
     }
 
     private AuthResponse buildAuthResponse(User user,
@@ -262,13 +363,10 @@ public class AuthService {
                 .tokenType("Bearer")
                 .role(user.getRole().name())
                 .userId(user.getId())
-                .displayId(user.getDisplayId())            // NAYA
+                .displayId(user.getDisplayId())
                 .name(user.getName())
                 .email(user.getEmail())
-                .isEmailVerified(user.getIsEmailVerified()) // NAYA
+                .isEmailVerified(user.getIsEmailVerified())
                 .build();
-    }
-    private String generateDisplayId(Long userId) {
-        return "NST-" + String.format("%06d", userId);
     }
 }
