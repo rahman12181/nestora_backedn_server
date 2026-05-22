@@ -45,6 +45,7 @@ public class PropertyService {
     private final CloudinaryService cloudinaryService;
     private final BookingRequestRepository bookingRequestRepository;
     private final ReviewRepository reviewRepository;
+    private final PropertyAccessSubscriptionService propertyAccessSubscriptionService;
     // =============================================
     // ADD PROPERTY
     // =============================================
@@ -53,6 +54,9 @@ public class PropertyService {
                                         PropertyCreateRequest request) {
 
         OwnerProfile owner = getVerifiedOwner(currentUser);
+
+        // 🆕 Property Access Subscription check — active subscription honi chahiye
+        propertyAccessSubscriptionService.checkPropertyAccessAllowed(owner);
 
         Property property = Property.builder()
                 .owner(owner)
@@ -604,7 +608,7 @@ public class PropertyService {
                     med.put("thumbnailUrl", m.getThumbnailUrl());
                     med.put("durationSec", m.getDurationSec());
                     med.put("isPrimary", m.getIsPrimary());
-                  //  med.put("is360", m.getIs360());
+                    //  med.put("is360", m.getIs360());
                     med.put("sortOrder", m.getSortOrder());
                     return med;
                 })

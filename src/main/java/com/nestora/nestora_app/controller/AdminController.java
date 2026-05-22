@@ -7,6 +7,9 @@ import com.nestora.nestora_app.entity.Report;
 import com.nestora.nestora_app.exception.AppException;
 import com.nestora.nestora_app.repository.ReportRepository;
 import com.nestora.nestora_app.service.AdminService;
+import com.nestora.nestora_app.service.PropertyAccessSubscriptionService;
+import com.nestora.nestora_app.enums.PropertyAccessStatus;
+import com.nestora.nestora_app.dto.response.PropertyAccessHistoryResponse;
 import com.nestora.nestora_app.service.PropertyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import com.nestora.nestora_app.service.PropertyService;
 public class AdminController {
 
     private final AdminService adminService;
+    private final PropertyAccessSubscriptionService propertyAccessService;
     private final ReportRepository reportRepository;
     private final PropertyRepository propertyRepository;
     private final PropertyService propertyService;
@@ -166,6 +170,40 @@ public class AdminController {
     @GetMapping("/properties/all")
     public ResponseEntity<?> getAllProperties() {
         return propertyService.getAllPropertiesForAdmin();
+    }
+
+    // =============================================
+    // 🆕 Admin — Saari Property Access Subscriptions dekho
+    // GET /admin/property-access-subscriptions?status=ACTIVE
+    // =============================================
+    @GetMapping("/property-access-subscriptions")
+    public ResponseEntity<ApiResponse<List<PropertyAccessHistoryResponse>>> getAllPropertyAccessSubscriptions(
+            @RequestParam(required = false) PropertyAccessStatus status) {
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "Property access subscriptions fetched",
+                        propertyAccessService.getAllSubscriptionsForAdmin(status))
+        );
+    }
+
+    // =============================================
+    // 🆕 Admin — Force expire karo subscription
+    // PATCH /admin/property-access-subscriptions/{subscriptionId}/expire
+    // =============================================
+    @PatchMapping("/property-access-subscriptions/{subscriptionId}/expire")
+    public ResponseEntity<ApiResponse<String>> forceExpireSubscription(
+            @PathVariable Long subscriptionId,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+
+        String reason = (body != null && body.containsKey("reason"))
+                ? body.get("reason")
+                : "Admin action";
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        propertyAccessService.forceExpireSubscription(subscriptionId, reason))
+        );
     }
 
     /*// All Properties (Admin)

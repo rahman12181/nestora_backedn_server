@@ -40,9 +40,8 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
 
-                        // =============================================
-                        // PUBLIC — No token required
-                        // =============================================
+
+                        // PUBLIC API — No token required
                         .requestMatchers(
                                 "/auth/**",
                                 "/properties/search",
@@ -74,7 +73,8 @@ public class SecurityConfig {
                                 "/owner/apply",
                                 "/owner/my-profile",
                                 "/owner/verification-status",
-                                "/owner/subscription/**"
+                                "/owner/subscription/**",
+                                "/owner/property-access/**"
                         ).hasAnyAuthority("STUDENT", "OWNER", "ADMIN")
 
                         // =============================================
