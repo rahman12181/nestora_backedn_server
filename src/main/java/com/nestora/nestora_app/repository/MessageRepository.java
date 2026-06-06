@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.repository;
 
-
 import com.nestora.nestora_app.entity.Conversation;
 import com.nestora.nestora_app.entity.Message;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +12,7 @@ import java.util.List;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
+    // Saare messages — conversation ke order mein
     List<Message> findByConversationOrderBySentAtAsc(Conversation conversation);
 
     // Unread messages count
@@ -32,5 +32,17 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     void markAllAsRead(
             @Param("conversation") Conversation conversation,
             @Param("userId") Long userId
+    );
+
+    // 🆕 Last non-deleted message — conversation ka lastMessage update ke liye
+    @Query("""
+        SELECT m FROM Message m
+        WHERE m.conversation = :conversation
+        AND m.isDeletedForEveryone = false
+        ORDER BY m.sentAt DESC
+        LIMIT 1
+    """)
+    java.util.Optional<Message> findLastActiveMessage(
+            @Param("conversation") Conversation conversation
     );
 }

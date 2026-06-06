@@ -158,7 +158,7 @@ public class PropertyAccessSubscriptionService {
     // =============================================
     public PropertyAccessStatusResponse getStatus(User currentUser) {
 
-        OwnerProfile owner = getVerifiedOwner(currentUser);
+        OwnerProfile owner = getOwnerProfile(currentUser);
 
         Optional<PropertyAccessSubscription> activeOpt = propertyAccessRepository
                 .findTopByOwnerAndStatusOrderByEndDateDesc(owner, PropertyAccessStatus.ACTIVE);
@@ -199,7 +199,7 @@ public class PropertyAccessSubscriptionService {
     // =============================================
     public List<PropertyAccessHistoryResponse> getHistory(User currentUser) {
 
-        OwnerProfile owner = getVerifiedOwner(currentUser);
+        OwnerProfile owner = getOwnerProfile(currentUser);
 
         return propertyAccessRepository
                 .findByOwnerOrderByCreatedAtDesc(owner)
@@ -346,6 +346,7 @@ public class PropertyAccessSubscriptionService {
     // PRIVATE HELPERS
     // =============================================
 
+    // Buy/Confirm/Renew ke liye — verified hona zaroori
     private OwnerProfile getVerifiedOwner(User user) {
         OwnerProfile owner = ownerProfileRepository.findByUser(user)
                 .orElseThrow(() -> new AppException(
@@ -361,6 +362,15 @@ public class PropertyAccessSubscriptionService {
         }
 
         return owner;
+    }
+
+    // Status/History ke liye — sirf owner profile hona zaroori, verification nahi
+    private OwnerProfile getOwnerProfile(User user) {
+        return ownerProfileRepository.findByUser(user)
+                .orElseThrow(() -> new AppException(
+                        "Owner profile not found. Please apply as owner first.",
+                        HttpStatus.NOT_FOUND
+                ));
     }
 
     private void hideOwnerProperties(OwnerProfile owner) {

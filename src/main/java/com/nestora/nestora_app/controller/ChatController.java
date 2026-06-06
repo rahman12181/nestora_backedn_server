@@ -1,7 +1,7 @@
 package com.nestora.nestora_app.controller;
 
-
 import com.nestora.nestora_app.dto.request.CreateConversationRequest;
+import com.nestora.nestora_app.dto.request.EditMessageRequest;
 import com.nestora.nestora_app.dto.request.SendMessageRequest;
 import com.nestora.nestora_app.dto.response.ApiResponse;
 import com.nestora.nestora_app.dto.response.ConversationResponse;
@@ -26,30 +26,26 @@ public class ChatController {
 
     private final ChatService chatService;
 
-
-    // REST APIs — Conversation management
-
+    // =============================================
+    // Existing APIs
+    // =============================================
 
     @PostMapping("/chat/conversations")
     public ResponseEntity<ApiResponse<ConversationResponse>> createConversation(
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody CreateConversationRequest request) {
 
-        ConversationResponse response =
-                chatService.createOrGetConversation(currentUser, request);
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Conversation started", response));
+                .body(ApiResponse.success("Conversation started",
+                        chatService.createOrGetConversation(currentUser, request)));
     }
 
     @GetMapping("/chat/conversations")
     public ResponseEntity<ApiResponse<List<ConversationResponse>>> getConversations(
             @AuthenticationPrincipal User currentUser) {
 
-        return ResponseEntity.ok(
-                ApiResponse.success("Conversations fetched",
-                        chatService.getMyConversations(currentUser))
-        );
+        return ResponseEntity.ok(ApiResponse.success("Conversations fetched",
+                chatService.getMyConversations(currentUser)));
     }
 
     @GetMapping("/chat/conversations/{conversationId}/messages")
@@ -57,10 +53,8 @@ public class ChatController {
             @AuthenticationPrincipal User currentUser,
             @PathVariable Long conversationId) {
 
-        return ResponseEntity.ok(
-                ApiResponse.success("Messages fetched",
-                        chatService.getMessages(currentUser, conversationId))
-        );
+        return ResponseEntity.ok(ApiResponse.success("Messages fetched",
+                chatService.getMessages(currentUser, conversationId)));
     }
 
     @PostMapping("/chat/conversations/{conversationId}/messages")
@@ -70,10 +64,9 @@ public class ChatController {
             @Valid @RequestBody SendMessageRequest request) {
 
         request.setConversationId(conversationId);
-        MessageResponse response = chatService.sendMessage(currentUser, request);
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Message sent", response));
+                .body(ApiResponse.success("Message sent",
+                        chatService.sendMessage(currentUser, request)));
     }
 
     @PatchMapping("/chat/conversations/{conversationId}/read")
@@ -81,22 +74,60 @@ public class ChatController {
             @AuthenticationPrincipal User currentUser,
             @PathVariable Long conversationId) {
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        chatService.markMessagesAsRead(currentUser, conversationId))
-        );
+        return ResponseEntity.ok(ApiResponse.success(
+                chatService.markMessagesAsRead(currentUser, conversationId)));
     }
 
-    // WebSocket — Real-time message
+    // =============================================
+    // 🆕 Edit Message
+    // PATCH /chat/messages/{messageId}/edit
+    // =============================================
+    @PatchMapping("/chat/messages/{messageId}/edit")
+    public ResponseEntity<ApiResponse<MessageResponse>> editMessage(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long messageId,
+            @Valid @RequestBody EditMessageRequest request) {
 
+        return ResponseEntity.ok(ApiResponse.success(
+                "Message edited successfully",
+                chatService.editMessage(currentUser, messageId, request)));
+    }
 
+    // =============================================
+    // 🆕 Delete For Everyone
+    // DELETE /chat/messages/{messageId}/everyone
+    // =============================================
+    @DeleteMapping("/chat/messages/{messageId}/everyone")
+    public ResponseEntity<ApiResponse<MessageResponse>> deleteForEveryone(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long messageId) {
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Message deleted for everyone",
+                chatService.deleteForEveryone(currentUser, messageId)));
+    }
+
+    // =============================================
+    // 🆕 Delete For Me
+    // DELETE /chat/messages/{messageId}/me
+    // =============================================
+    @DeleteMapping("/chat/messages/{messageId}/me")
+    public ResponseEntity<ApiResponse<String>> deleteForMe(
+            @AuthenticationPrincipal User currentUser,
+            @PathVariable Long messageId) {
+
+        return ResponseEntity.ok(ApiResponse.success(
+                chatService.deleteForMe(currentUser, messageId)));
+    }
+
+    // =============================================
+    // WebSocket — Real-time
+    // =============================================
     @MessageMapping("/chat.send")
-    // Flutter se: stompClient.send("/app/chat.send", message)
     public void handleWebSocketMessage(
             @Payload SendMessageRequest request,
             Principal principal) {
 
-        // Principal se current user nikalo
         User currentUser = (User) ((org.springframework.security.authentication
                 .UsernamePasswordAuthenticationToken) principal).getPrincipal();
 

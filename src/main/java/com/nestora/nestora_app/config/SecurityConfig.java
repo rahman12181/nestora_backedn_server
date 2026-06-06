@@ -1,7 +1,6 @@
 package com.nestora.nestora_app.config;
 
 import com.nestora.nestora_app.filter.JwtAuthFilter;
-import com.nestora.nestora_app.filter.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
