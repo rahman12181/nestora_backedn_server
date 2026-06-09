@@ -44,7 +44,7 @@ public class PropertyMedia {
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt;
 
-   // private Boolean is360 = false;
+    private Boolean is360 = false;
 
     @PrePersist
     protected void onCreate() {

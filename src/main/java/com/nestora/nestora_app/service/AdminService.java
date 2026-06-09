@@ -27,6 +27,7 @@ public class AdminService {
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
+    private final PropertyAccessSubscriptionRepository propertyAccessSubscriptionRepository;
 
     // GET PENDING OWNERS
     public List<AdminOwnerResponse> getPendingOwners() {
@@ -222,13 +223,24 @@ public class AdminService {
 
         long pendingProperties = totalProperties - publishedProperties;
 
-        // Total revenue — saare successful payments ka sum
-        BigDecimal totalRevenue = subscriptionPaymentRepository
+        // Listing Subscription revenue
+        BigDecimal listingRevenue = subscriptionPaymentRepository
                 .findAll()
                 .stream()
                 .filter(p -> "SUCCESS".equals(p.getStatus()))
                 .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Property Access Subscription revenue
+        BigDecimal propertyAccessRevenue = propertyAccessSubscriptionRepository
+                .findAll()
+                .stream()
+                .filter(p -> p.getAmountPaid() != null)
+                .map(PropertyAccessSubscription::getAmountPaid)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Total = dono ka sum
+        BigDecimal totalRevenue = listingRevenue.add(propertyAccessRevenue);
 
         return DashboardStatsResponse.builder()
                 .totalUsers(totalUsers)
@@ -239,6 +251,8 @@ public class AdminService {
                 .publishedProperties(publishedProperties)
                 .pendingProperties(pendingProperties)
                 .totalRevenue(totalRevenue)
+                .listingSubscriptionRevenue(listingRevenue)
+                .propertyAccessRevenue(propertyAccessRevenue)
                 .build();
     }
 

@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.dto.response;
 
-
 import com.nestora.nestora_app.enums.GenderAllowed;
 import com.nestora.nestora_app.enums.OccupancyStatus;
 import com.nestora.nestora_app.enums.PropertyType;
@@ -28,10 +27,13 @@ public class PropertySearchResponse {
     private Integer totalRooms;
     private Integer availableRooms;
     private OccupancyStatus occupancyStatus;
-    private String coverImage;
+    private String coverImage;       // Search listing ke liye — pehla image
+    private List<MediaResponse> media; // 🆕 Detail page ke liye — saari images
     private List<String> amenities;
     private Boolean isVerifiedOwner;
     private Double distanceKm;
+    private Double latitude;
+    private Double longitude;
     private Double averageRating;
     private Integer totalReviews;
     private Boolean isFeatured;
@@ -39,4 +41,5 @@ public class PropertySearchResponse {
     private Long ownerUserId;
     private String ownerName;
     private String ownerDisplayId;
+    private String description;      // 🆕 Detail page ke liye
 }

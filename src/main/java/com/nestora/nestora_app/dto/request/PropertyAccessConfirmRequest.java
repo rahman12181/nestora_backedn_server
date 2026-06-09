@@ -16,7 +16,6 @@ public class PropertyAccessConfirmRequest {
 
     @NotBlank(message = "Razorpay signature is required")
     private String razorpaySignature;
-
     @NotNull(message = "Plan is required")
     private PropertyAccessPlan plan;
 }

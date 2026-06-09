@@ -17,4 +17,6 @@ public class DashboardStatsResponse {
     private Long publishedProperties;
     private Long pendingProperties;
     private BigDecimal totalRevenue;
+    private BigDecimal listingSubscriptionRevenue;      // Listing plans ka revenue
+    private BigDecimal propertyAccessRevenue;           // Property Access plans ka revenue
 }

@@ -1,5 +1,6 @@
 package com.nestora.nestora_app.service;
 
+import com.nestora.nestora_app.dto.response.MediaResponse;
 import com.nestora.nestora_app.dto.response.PropertySearchResponse;
 import com.nestora.nestora_app.dto.response.ReviewResponse;
 import com.nestora.nestora_app.dto.response.RoomResponse;
@@ -231,9 +232,25 @@ public class SearchService {
             distance = Math.round(distance * 100.0) / 100.0;
         }
 
+        // 🆕 Saari media files map karo
+        List<MediaResponse> mediaList = mediaRepository
+                .findByPropertyOrderBySortOrderAsc(p)
+                .stream()
+                .map(m -> MediaResponse.builder()
+                        .mediaId(m.getId())
+                        .mediaType(m.getMediaType())
+                        .url(m.getUrl())
+                        .thumbnailUrl(m.getThumbnailUrl())
+                        .isPrimary(m.getIsPrimary())
+                        .sortOrder(m.getSortOrder())
+                        //.is360(Boolean.TRUE.equals(m.getIs360()))
+                        .build())
+                .collect(Collectors.toList());
+
         return PropertySearchResponse.builder()
                 .propertyId(p.getId())
                 .title(p.getTitle())
+                .description(p.getDescription())
                 .propertyType(p.getPropertyType())
                 .genderAllowed(p.getGenderAllowed())
                 .addressLine(p.getAddressLine())
@@ -248,12 +265,15 @@ public class SearchService {
                 .availableRooms(p.getAvailableRooms())
                 .occupancyStatus(p.getOccupancyStatus())
                 .coverImage(coverImage)
+                .media(mediaList)
                 .amenities(amenities)
                 .ownerUserId(p.getOwner().getUser().getId())
                 .ownerName(p.getOwner().getUser().getName())
                 .ownerDisplayId(p.getOwner().getUser().getDisplayId())
                 .isVerifiedOwner(isVerified)
                 .distanceKm(distance)
+                .latitude(p.getLatitude() != null ? p.getLatitude().doubleValue() : null)
+                .longitude(p.getLongitude() != null ? p.getLongitude().doubleValue() : null)
                 .averageRating(Math.round(avgRating * 10.0) / 10.0)
                 .totalReviews(reviews.size())
                 .isFeatured(Boolean.TRUE.equals(p.getIsFeatured()))
