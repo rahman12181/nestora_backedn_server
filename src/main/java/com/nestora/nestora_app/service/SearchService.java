@@ -114,16 +114,41 @@ public class SearchService {
             }
         }
 
-        // Featured properties hamesha pehle dikhao
+        // Final sort: Featured → Subscription Plan → Baaki
         responses.sort((a, b) -> {
+            // 1. Featured hamesha sabse upar
             boolean aFeatured = Boolean.TRUE.equals(a.getIsFeatured());
             boolean bFeatured = Boolean.TRUE.equals(b.getIsFeatured());
             if (aFeatured && !bFeatured) return -1;
             if (!aFeatured && bFeatured) return 1;
-            return 0;
+
+            // 2. Active subscription wale upar, expired/no subscription neeche
+            boolean aActive = a.getOwnerSubscriptionStatus() != null &&
+                    a.getOwnerSubscriptionStatus().name().equals("ACTIVE");
+            boolean bActive = b.getOwnerSubscriptionStatus() != null &&
+                    b.getOwnerSubscriptionStatus().name().equals("ACTIVE");
+            if (aActive && !bActive) return -1;
+            if (!aActive && bActive) return 1;
+
+            // 3. Active subscription mein plan ke hisaab se rank karo
+            // ENTERPRISE > PREMIUM > STANDARD > BASIC
+            int aPlanRank = getPlanRank(a.getOwnerSubscriptionPlan());
+            int bPlanRank = getPlanRank(b.getOwnerSubscriptionPlan());
+            return Integer.compare(bPlanRank, aPlanRank); // Higher rank pehle
         });
 
         return responses;
+    }
+
+    // Subscription plan ka rank — jitna zyada utna upar
+    private int getPlanRank(com.nestora.nestora_app.enums.SubscriptionPlan plan) {
+        if (plan == null) return 0;
+        return switch (plan) {
+            case ENTERPRISE -> 4;
+            case PREMIUM    -> 3;
+            case STANDARD   -> 2;
+            case BASIC      -> 1;
+        };
     }
 
     // =============================================
@@ -277,6 +302,8 @@ public class SearchService {
                 .averageRating(Math.round(avgRating * 10.0) / 10.0)
                 .totalReviews(reviews.size())
                 .isFeatured(Boolean.TRUE.equals(p.getIsFeatured()))
+                .ownerSubscriptionPlan(p.getOwner().getSubscriptionPlan())
+                .ownerSubscriptionStatus(p.getOwner().getSubscriptionStatus())
                 .viewCount(p.getViewCount() != null ? p.getViewCount() : 0L)
                 .build();
     }

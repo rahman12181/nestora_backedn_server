@@ -1,6 +1,8 @@
 package com.nestora.nestora_app.dto.response;
 
 import com.nestora.nestora_app.enums.GenderAllowed;
+import com.nestora.nestora_app.enums.SubscriptionPlan;
+import com.nestora.nestora_app.enums.SubscriptionStatus;
 import com.nestora.nestora_app.enums.OccupancyStatus;
 import com.nestora.nestora_app.enums.PropertyType;
 import lombok.Builder;
@@ -37,6 +39,8 @@ public class PropertySearchResponse {
     private Double averageRating;
     private Integer totalReviews;
     private Boolean isFeatured;
+    private SubscriptionPlan ownerSubscriptionPlan;    // Ranking ke liye
+    private SubscriptionStatus ownerSubscriptionStatus; // Active hai ya nahi
     private Long viewCount;
     private Long ownerUserId;
     private String ownerName;
