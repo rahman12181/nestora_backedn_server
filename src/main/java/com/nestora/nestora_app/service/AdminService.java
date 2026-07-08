@@ -82,6 +82,31 @@ public class AdminService {
     // REJECT OWNER
 
     @Transactional
+    // GET /admin/owners/{ownerId}/detail
+    public AdminOwnerResponse getOwnerDetail(Long ownerId) {
+        OwnerProfile owner = ownerProfileRepository.findById(ownerId)
+                .orElseThrow(() -> new AppException("Owner not found", HttpStatus.NOT_FOUND));
+
+        return AdminOwnerResponse.builder()
+                .ownerId(owner.getId())
+                .userId(owner.getUser().getId())
+                .displayId(owner.getUser().getDisplayId())
+                .name(owner.getUser().getName())
+                .email(owner.getUser().getEmail())
+                .phone(owner.getUser().getPhone())
+                .businessName(owner.getBusinessName())
+                .aadharNumber(owner.getAadharNumber())
+                .panNumber(owner.getPanNumber())
+                .aadharDocUrl(owner.getAadharDocUrl())
+                .panDocUrl(owner.getPanDocUrl())
+                .addressProofUrl(owner.getAddressProofUrl())
+                .verificationStatus(owner.getVerificationStatus())
+                .rejectionReason(owner.getRejectionReason())
+                .subscriptionPlan(owner.getSubscriptionPlan())
+                .createdAt(owner.getCreatedAt())
+                .build();
+    }
+
     public String rejectOwner(Long ownerId, RejectOwnerRequest request) {
 
         OwnerProfile owner = ownerProfileRepository.findById(ownerId)

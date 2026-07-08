@@ -11,5 +11,4 @@ public class NestoraAppApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(NestoraAppApplication.class, args);
 	}
-
 }

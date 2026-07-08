@@ -53,6 +53,15 @@ public class AdminController {
         );
     }
 
+    // GET /admin/owners/{ownerId}/detail
+    @GetMapping("/owners/{ownerId}/detail")
+    public ResponseEntity<ApiResponse<AdminOwnerResponse>> getOwnerDetail(
+            @PathVariable Long ownerId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Owner detail fetched",
+                adminService.getOwnerDetail(ownerId)));
+    }
+
     @PatchMapping("/owners/{ownerId}/verify")
     public ResponseEntity<ApiResponse<String>> verifyOwner(
             @PathVariable Long ownerId) {
