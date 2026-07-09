@@ -1,6 +1,5 @@
 package com.nestora.nestora_app.config;
 
-
 import com.nestora.nestora_app.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +32,6 @@ public class WebSocketAuthConfig implements ChannelInterceptor {
         if (accessor != null &&
                 StompCommand.CONNECT.equals(accessor.getCommand())) {
 
-            // JWT token header se nikalo
             String authHeader = accessor.getFirstNativeHeader("Authorization");
 
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -44,17 +42,19 @@ public class WebSocketAuthConfig implements ChannelInterceptor {
                             userDetailsService.loadUserByUsername(email);
 
                     if (jwtService.isTokenValid(jwt, userDetails)) {
+                        Long userId = jwtService.extractUserId(jwt);
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(
-                                        userDetails,
+                                        String.valueOf(userId),
                                         null,
                                         userDetails.getAuthorities()
                                 );
                         accessor.setUser(auth);
-                        log.info("WebSocket authenticated: {}", email);
+
+                        log.info("✅ WebSocket authenticated: userId={}", userId);
                     }
                 } catch (Exception e) {
-                    log.warn("WebSocket auth failed: {}", e.getMessage());
+                    log.warn("❌ WebSocket auth failed: {}", e.getMessage());
                 }
             }
         }

@@ -76,7 +76,6 @@ public class AuthService {
         saved.setDisplayId(generateDisplayId(saved.getId()));
         userRepository.save(saved);
 
-        // OTP bhejo — email + phone
         sendOtp(
                 saved.getEmail(),
                 saved.getPhone(),
@@ -88,7 +87,7 @@ public class AuthService {
     }
 
     // =============================================
-    // VERIFY OTP
+    // VERIFY OTP - ✅ FIXED: userId added
     // =============================================
     @Transactional
     public AuthResponse verifyRegisterOtp(VerifyOtpRequest request) {
@@ -106,14 +105,15 @@ public class AuthService {
         user.setIsEmailVerified(true);
         userRepository.save(user);
 
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        // ✅ FIXED: userId pass karo
+        String accessToken = jwtService.generateAccessToken(user, user.getId());
+        String refreshToken = jwtService.generateRefreshToken(user, user.getId());
 
         return buildAuthResponse(user, accessToken, refreshToken);
     }
 
     // =============================================
-    // LOGIN
+    // LOGIN - ✅ FIXED: userId added
     // =============================================
     public AuthResponse login(LoginRequest request) {
 
@@ -122,7 +122,6 @@ public class AuthService {
                         "Invalid email or password", HttpStatus.UNAUTHORIZED
                 ));
 
-        // Account locked check
         if (user.getAccountLockedUntil() != null &&
                 user.getAccountLockedUntil().isAfter(LocalDateTime.now())) {
 
@@ -152,13 +151,11 @@ public class AuthService {
                     )
             );
         } catch (BadCredentialsException e) {
-            // Failed attempt increment karo
             int attempts = (user.getFailedLoginAttempts() == null)
                     ? 0 : user.getFailedLoginAttempts();
             attempts++;
             user.setFailedLoginAttempts(attempts);
 
-            // 5 attempts ke baad 30 min lock
             if (attempts >= 5) {
                 user.setAccountLockedUntil(
                         LocalDateTime.now().plusMinutes(30)
@@ -179,13 +176,13 @@ public class AuthService {
             );
         }
 
-        // Success — reset attempts
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);
         userRepository.save(user);
 
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+        // ✅ FIXED: userId pass karo
+        String accessToken = jwtService.generateAccessToken(user, user.getId());
+        String refreshToken = jwtService.generateRefreshToken(user, user.getId());
 
         return buildAuthResponse(user, accessToken, refreshToken);
     }
@@ -234,7 +231,7 @@ public class AuthService {
     }
 
     // =============================================
-    // REFRESH TOKEN
+    // REFRESH TOKEN - ✅ FIXED: userId added
     // =============================================
     public AuthResponse refreshToken(String refreshToken) {
 
@@ -252,8 +249,9 @@ public class AuthService {
             );
         }
 
-        String newAccessToken = jwtService.generateAccessToken(user);
-        String newRefreshToken = jwtService.generateRefreshToken(user);
+        // ✅ FIXED: userId pass karo
+        String newAccessToken = jwtService.generateAccessToken(user, user.getId());
+        String newRefreshToken = jwtService.generateRefreshToken(user, user.getId());
 
         return buildAuthResponse(user, newAccessToken, newRefreshToken);
     }
@@ -289,13 +287,10 @@ public class AuthService {
 
     private void sendOtp(String email, String phone, OtpType type) {
 
-        // Purane OTP delete karo
         otpRepository.deleteAllByEmailAndType(email, type);
 
-        // Naya OTP generate karo
         String otp = generateOtp();
 
-        // DB me save karo
         OtpVerification otpVerification = OtpVerification.builder()
                 .email(email)
                 .otp(otp)
@@ -306,10 +301,8 @@ public class AuthService {
 
         otpRepository.save(otpVerification);
 
-        // Email bhejo
         emailService.sendOtpEmail(email, otp, type.name());
 
-        // SMS bhejo agar phone hai
         if (phone != null && !phone.isEmpty()) {
             smsService.sendOtpSms(phone, otp);
         }
