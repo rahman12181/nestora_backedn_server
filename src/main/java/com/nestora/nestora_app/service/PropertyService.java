@@ -28,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import com.nestora.nestora_app.dto.response.ApiResponse;
+import com.nestora.nestora_app.enums.NotificationType;
+import com.nestora.nestora_app.enums.Role;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,6 +48,11 @@ public class PropertyService {
     private final BookingRequestRepository bookingRequestRepository;
     private final ReviewRepository reviewRepository;
     private final PropertyAccessSubscriptionService propertyAccessSubscriptionService;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
+    // =============================================
+    // ADD PROPERTY
+    // =============================================
     // =============================================
     // ADD PROPERTY
     // =============================================
@@ -87,6 +94,18 @@ public class PropertyService {
         if (request.getAmenities() != null && !request.getAmenities().isEmpty()) {
             saveAmenities(saved, request.getAmenities());
         }
+
+        // ✅ ADDED — Admin ko notify karo
+        userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.ADMIN)
+                .forEach(admin -> notificationService.createNotification(
+                        admin,
+                        "New Property for Review 🏢",
+                        "New property '" + saved.getTitle() +
+                                "' needs review by " + owner.getUser().getName(),
+                        NotificationType.SYSTEM,
+                        saved.getId()
+                ));
 
         return mapToPropertyResponse(saved);
     }

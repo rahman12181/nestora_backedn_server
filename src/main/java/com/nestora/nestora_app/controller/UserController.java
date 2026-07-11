@@ -7,6 +7,7 @@ import com.nestora.nestora_app.entity.Report;
 import com.nestora.nestora_app.entity.User;
 import com.nestora.nestora_app.repository.ReportRepository;
 import com.nestora.nestora_app.repository.UserRepository;
+import com.nestora.nestora_app.service.NotificationService;
 import com.nestora.nestora_app.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.nestora.nestora_app.enums.NotificationType;
+import com.nestora.nestora_app.enums.Role;
+import com.nestora.nestora_app.repository.UserRepository;
 
 import java.util.List;
 
@@ -27,6 +31,7 @@ public class UserController {
     private final UserService userService;
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(
@@ -167,7 +172,18 @@ public class UserController {
                 .status("PENDING")
                 .build();
 
-        reportRepository.save(report);
+        Report saved = reportRepository.save(report);
+
+        // ✅ ADDED — Admin ko notify karo
+        userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.ADMIN)
+                .forEach(admin -> notificationService.createNotification(
+                        admin,
+                        "New Report Submitted 🚨",
+                        currentUser.getName() + " reported: " + request.getReason(),
+                        NotificationType.SYSTEM,
+                        saved.getId()
+                ));
 
         return ResponseEntity.ok(
                 ApiResponse.success("Report submitted. Our team will review it.")

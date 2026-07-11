@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.nestora.nestora_app.enums.NotificationType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
     private final PropertyAccessSubscriptionRepository propertyAccessSubscriptionRepository;
+    private final NotificationService notificationService;
 
     // GET PENDING OWNERS
     public List<AdminOwnerResponse> getPendingOwners() {
@@ -75,11 +77,43 @@ public class AdminService {
         user.setRole(com.nestora.nestora_app.enums.Role.OWNER);
         userRepository.save(user);
 
+        // ✅ ADDED — Owner ko notify karo
+        notificationService.createNotification(
+                user,
+                "Verification Approved! 🎉",
+                "Your owner application has been verified. You can now add properties!",
+                NotificationType.VERIFICATION,
+                owner.getId()
+        );
+
         return "Owner verified successfully. Verified badge assigned.";
     }
 
 
     // REJECT OWNER
+    public String rejectOwner(Long ownerId, RejectOwnerRequest request) {
+
+        OwnerProfile owner = ownerProfileRepository.findById(ownerId)
+                .orElseThrow(() -> new AppException(
+                        "Owner not found", HttpStatus.NOT_FOUND
+                ));
+
+        owner.setVerificationStatus(VerificationStatus.REJECTED);
+        owner.setRejectionReason(request.getReason());
+        owner.setVerifiedAt(null);
+        ownerProfileRepository.save(owner);
+
+        // ✅  Owner ko notify karo
+        notificationService.createNotification(
+                owner.getUser(),
+                "Verification Rejected ❌",
+                "Your owner application was rejected. Reason: " + request.getReason(),
+                NotificationType.VERIFICATION,
+                owner.getId()
+        );
+
+        return "Owner application rejected.";
+    }
 
     @Transactional
     // GET /admin/owners/{ownerId}/detail
@@ -107,20 +141,7 @@ public class AdminService {
                 .build();
     }
 
-    public String rejectOwner(Long ownerId, RejectOwnerRequest request) {
 
-        OwnerProfile owner = ownerProfileRepository.findById(ownerId)
-                .orElseThrow(() -> new AppException(
-                        "Owner not found", HttpStatus.NOT_FOUND
-                ));
-
-        owner.setVerificationStatus(VerificationStatus.REJECTED);
-        owner.setRejectionReason(request.getReason());
-        owner.setVerifiedAt(null);
-        ownerProfileRepository.save(owner);
-
-        return "Owner application rejected.";
-    }
 
 
     // GET PENDING PROPERTIES

@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.nestora.nestora_app.enums.NotificationType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +36,7 @@ public class UserService {
     private final PropertyMediaRepository mediaRepository;
     private final PasswordEncoder passwordEncoder;
     private final CloudinaryService cloudinaryService;
+    private final NotificationService notificationService;
 
     // =============================================
     // GET PROFILE
@@ -204,6 +206,18 @@ public class UserService {
                 .build();
 
         BookingRequest saved = bookingRequestRepository.save(booking);
+
+        // ✅ ADDED — Owner ko notify karo
+        User ownerUser = property.getOwner().getUser();
+        notificationService.createNotification(
+                ownerUser,
+                "New Booking Request 📩",
+                currentUser.getName() + " has requested to book " +
+                        property.getTitle(),
+                NotificationType.BOOKING,
+                saved.getId()
+        );
+
         return mapToBookingResponse(saved);
     }
 
