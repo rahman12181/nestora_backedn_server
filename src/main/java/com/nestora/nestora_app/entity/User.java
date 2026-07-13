@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -66,6 +67,12 @@ public class User implements UserDetails {
 
     @Column(name = "account_locked_until")
     private LocalDateTime accountLockedUntil;
+
+    // ============================================
+    // NEW — Refer & Earn wallet balance
+    // ============================================
+    @Column(name = "wallet_balance")
+    private BigDecimal walletBalance = BigDecimal.ZERO;
 
     @PrePersist
     protected void onCreate() {

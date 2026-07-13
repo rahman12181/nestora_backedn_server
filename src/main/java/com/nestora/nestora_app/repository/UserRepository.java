@@ -9,4 +9,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
+
+    // NEW — Refer & Earn: resolves a referral code (= the referrer's displayId) to a User
+    Optional<User> findByDisplayId(String displayId);
 }

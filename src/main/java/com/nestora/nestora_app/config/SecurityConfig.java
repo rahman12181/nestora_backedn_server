@@ -46,7 +46,15 @@ public class SecurityConfig {
                                 "/properties/search",
                                 "/properties/*/rooms",
                                 "/properties/*/reviews",
-                                "/properties/*"
+                                "/properties/*",
+
+                                // NEW — Reels: public browsing (token optional so isLikedByMe
+                                // resolves when sent, but works fine without it too)
+                                "/reels/feed",
+                                "/properties/*/reels",
+                                "/reels/*/comments",
+                                "/reels/*/view",
+                                "/reels/*/share"
                         ).permitAll()
 
                         // WebSocket public
@@ -56,6 +64,8 @@ public class SecurityConfig {
                         // ADMIN ONLY
                         // =============================================
                         .requestMatchers("/admin/**").hasAuthority("ADMIN")
+                        // NOTE: this already covers /admin/withdrawals/** (Refer & Earn) too —
+                        // no separate line needed since it's a sub-path of /admin/**
 
                         // =============================================
                         // OWNER — Verified owner
@@ -64,7 +74,8 @@ public class SecurityConfig {
                                 "/owner/properties/**",
                                 "/owner/booking-requests/**",
                                 "/owner/dashboard",
-                                "/owner/visits/**"
+                                "/owner/visits/**",
+                                "/owner/reels/**" // NEW — Reels: upload/list/delete own reels
                         ).hasAnyAuthority("OWNER", "ADMIN")
 
                         // Owner apply — koi bhi logged in user
@@ -79,6 +90,10 @@ public class SecurityConfig {
                         // =============================================
                         // ALL AUTHENTICATED USERS
                         // =============================================
+                        // NOTE: /reels/{id}/like, /reels/{id}/comments (POST), /user/referral/**,
+                        // and /user/wallet/** all fall through to here automatically — any
+                        // logged-in user (STUDENT/OWNER/ADMIN) can hit them, which is correct,
+                        // no extra line needed for them.
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider)

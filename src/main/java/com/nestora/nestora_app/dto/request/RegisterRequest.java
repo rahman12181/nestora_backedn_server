@@ -24,4 +24,7 @@ public class RegisterRequest {
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
+
+    // NEW — Refer & Earn: optional referral code (= referrer's displayId, e.g. "NST-000042")
+    private String referralCode;
 }

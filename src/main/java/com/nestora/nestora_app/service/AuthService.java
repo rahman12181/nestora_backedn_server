@@ -41,6 +41,9 @@ public class AuthService {
     private final EmailService emailService;
     private final SmsService smsService;
 
+    // NEW — Refer & Earn
+    private final ReferralService referralService;
+
     @Value("${otp.expiry.minutes}")
     private int otpExpiryMinutes;
 
@@ -76,6 +79,17 @@ public class AuthService {
         saved.setDisplayId(generateDisplayId(saved.getId()));
         userRepository.save(saved);
 
+        // NEW — Refer & Earn: record a PENDING referral if a valid code was supplied.
+        // Wrapped in try/catch so a typo'd/invalid code never blocks registration itself —
+        // the referral bonus is just silently skipped, the account is still created normally.
+        if (request.getReferralCode() != null && !request.getReferralCode().isBlank()) {
+            try {
+                referralService.createPendingReferral(saved, request.getReferralCode());
+            } catch (AppException e) {
+                log.warn("Referral code skipped for user {}: {}", saved.getId(), e.getMessage());
+            }
+        }
+
         sendOtp(
                 saved.getEmail(),
                 saved.getPhone(),
@@ -104,6 +118,11 @@ public class AuthService {
         user.setIsActive(true);
         user.setIsEmailVerified(true);
         userRepository.save(user);
+
+        // NEW — Refer & Earn: THIS is the only place ₹19 actually gets credited.
+        // Safe to call even if this user wasn't referred (it just does nothing then),
+        // and safe against double-crediting even if this method somehow ran twice.
+        referralService.completeReferralReward(user);
 
         // ✅ FIXED: userId pass karo
         String accessToken = jwtService.generateAccessToken(user, user.getId());
