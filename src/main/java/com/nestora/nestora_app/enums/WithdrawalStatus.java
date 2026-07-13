@@ -1,7 +1,9 @@
 package com.nestora.nestora_app.enums;
 
 public enum WithdrawalStatus {
-    PENDING,   // requested, waiting for admin to pay manually
-    APPROVED,  // admin has sent the money via UPI/bank and marked it paid
-    REJECTED   // admin rejected -> amount refunded back to wallet
+    PENDING,     // requested, admin hasn't triggered payout yet
+    PROCESSING,  // admin triggered payout, RazorpayX is processing it (async UPI settlement)
+    APPROVED,    // payout confirmed successful — money has actually reached the user's UPI
+    FAILED,      // payout failed/reversed by RazorpayX — amount auto-refunded to wallet
+    REJECTED     // admin manually rejected before payout — amount refunded to wallet
 }

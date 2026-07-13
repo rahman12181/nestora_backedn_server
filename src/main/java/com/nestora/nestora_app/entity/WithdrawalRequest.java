@@ -36,9 +36,25 @@ public class WithdrawalRequest {
     @Column(name = "admin_note", length = 255)
     private String adminNote;
 
-    // UPI/bank transaction reference number the admin enters after manually paying
+    // UPI transaction reference (UTR) — now filled AUTOMATICALLY from the RazorpayX
+    // payout response, admin does not type this in manually anymore.
     @Column(name = "transaction_ref", length = 100)
     private String transactionRef;
+
+    // ============================================
+    // NEW — RazorpayX automatic payout tracking
+    // ============================================
+    @Column(name = "razorpayx_contact_id", length = 60)
+    private String razorpayXContactId;
+
+    @Column(name = "razorpayx_fund_account_id", length = 60)
+    private String razorpayXFundAccountId;
+
+    @Column(name = "razorpayx_payout_id", length = 60, unique = true)
+    private String razorpayXPayoutId;
+
+    @Column(name = "failure_reason", length = 255)
+    private String failureReason;
 
     @Column(name = "requested_at")
     private LocalDateTime requestedAt;
@@ -48,7 +64,7 @@ public class WithdrawalRequest {
 
     @ManyToOne
     @JoinColumn(name = "processed_by")
-    private User processedBy; // which admin approved/rejected this
+    private User processedBy; // which admin triggered the payout
 
     @PrePersist
     protected void onCreate() {

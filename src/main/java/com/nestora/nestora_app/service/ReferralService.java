@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -49,8 +50,21 @@ public class ReferralService {
      * Step 1 — called at registration time. Validates the code and records a PENDING
      * referral. Money is NOT credited yet — that only happens after email verification,
      * so a fake/never-verified signup can never earn a reward.
+     *
+     * IMPORTANT: Propagation.REQUIRES_NEW is critical here. AuthService.register() calls
+     * this inside a try/catch and expects registration to succeed even if this method
+     * throws (e.g. invalid referral code). Without REQUIRES_NEW, this method would share
+     * the SAME transaction as register() (default propagation = REQUIRED). If it throws,
+     * Spring marks that whole shared transaction "rollback-only" — even though the
+     * exception gets caught in register(), the transaction is already poisoned, and when
+     * register()'s @Transactional tries to commit at the end, Spring throws
+     * UnexpectedRollbackException, which is NOT an AppException, so it isn't caught by
+     * the try/catch — it escapes and hits the generic 500 handler ("Something went wrong").
+     * REQUIRES_NEW gives this method its OWN transaction, so if IT rolls back, only the
+     * referral insert rolls back — the User/OTP creation in register()'s transaction is
+     * completely unaffected.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createPendingReferral(User newUser, String referralCode) {
         String code = referralCode.trim().toUpperCase();
 

@@ -21,6 +21,7 @@ public class WithdrawalResponse {
     private String upiId;
     private String status;          // PENDING / APPROVED / REJECTED
     private String transactionRef;
+    private String failureReason;
     private String adminNote;
     private LocalDateTime requestedAt;
     private LocalDateTime processedAt;
