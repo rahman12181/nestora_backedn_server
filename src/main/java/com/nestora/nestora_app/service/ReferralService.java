@@ -51,35 +51,52 @@ public class ReferralService {
      * referral. Money is NOT credited yet — that only happens after email verification,
      * so a fake/never-verified signup can never earn a reward.
      *
-     * IMPORTANT: Propagation.REQUIRES_NEW is critical here. AuthService.register() calls
-     * this inside a try/catch and expects registration to succeed even if this method
-     * throws (e.g. invalid referral code). Without REQUIRES_NEW, this method would share
-     * the SAME transaction as register() (default propagation = REQUIRED). If it throws,
-     * Spring marks that whole shared transaction "rollback-only" — even though the
-     * exception gets caught in register(), the transaction is already poisoned, and when
-     * register()'s @Transactional tries to commit at the end, Spring throws
-     * UnexpectedRollbackException, which is NOT an AppException, so it isn't caught by
-     * the try/catch — it escapes and hits the generic 500 handler ("Something went wrong").
-     * REQUIRES_NEW gives this method its OWN transaction, so if IT rolls back, only the
-     * referral insert rolls back — the User/OTP creation in register()'s transaction is
-     * completely unaffected.
+     * IMPORTANT: This method NEVER throws for "expected" non-referral outcomes (invalid
+     * code, self-referral, duplicate) — it just logs a warning and returns. This is
+     * deliberate, for two separate reasons discovered during testing:
+     *
+     * 1) If this threw an exception while sharing register()'s transaction (default
+     *    propagation), Spring marks that whole transaction "rollback-only". Even catching
+     *    the exception in AuthService.register() doesn't help — at commit time Spring
+     *    throws UnexpectedRollbackException, which escapes any try/catch and causes a
+     *    500 error, failing registration entirely.
+     *
+     * 2) The "fix" for #1 was giving this method its own transaction via
+     *    Propagation.REQUIRES_NEW — but that introduced a WORSE problem: this method
+     *    inserts a row into `referrals` with a foreign key to the brand-new User row
+     *    that register()'s (still-open, uncommitted) transaction is holding an exclusive
+     *    lock on. MySQL's FK constraint check needs to lock that same User row, so this
+     *    method's separate connection blocks waiting for register()'s connection to
+     *    commit — which register() can't do until THIS method returns. Result:
+     *    "Lock wait timeout exceeded" after ~50 seconds.
+     *
+     * The actual correct fix: never let an exception cross this method's boundary in the
+     * first place. No exception -> nothing to roll back -> no rollback-only marking ->
+     * no UnexpectedRollbackException -> no need for REQUIRES_NEW -> no cross-connection
+     * FK lock contention -> no deadlock. Plain @Transactional (joins register()'s existing
+     * transaction) is correct and sufficient.
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void createPendingReferral(User newUser, String referralCode) {
         String code = referralCode.trim().toUpperCase();
 
-        User referrer = userRepository.findByDisplayId(code)
-                .orElseThrow(() -> new AppException("Invalid referral code", HttpStatus.BAD_REQUEST));
+        Optional<User> referrerOpt = userRepository.findByDisplayId(code);
+        if (referrerOpt.isEmpty()) {
+            log.warn("Referral skipped for user {}: invalid referral code '{}'", newUser.getId(), code);
+            return;
+        }
+        User referrer = referrerOpt.get();
 
         if (referrer.getId().equals(newUser.getId())) {
-            throw new AppException("You cannot refer yourself", HttpStatus.BAD_REQUEST);
+            log.warn("Referral skipped for user {}: self-referral attempt", newUser.getId());
+            return;
         }
 
         // Safety net: a user can only ever be the "referredUser" once, no matter what.
         // (Also enforced at the DB level by a UNIQUE constraint on referred_user_id.)
         if (referralRepository.existsByReferredUser_Id(newUser.getId())) {
             log.warn("Duplicate referral attempt blocked for user {}", newUser.getId());
-            return; // silently ignore instead of failing registration
+            return;
         }
 
         Referral referral = Referral.builder()

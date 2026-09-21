@@ -74,6 +74,12 @@ public class OwnerProfile {
     @Column(name = "monthly_fee")
     private BigDecimal monthlyFee;
 
+    // ============================================
+    // NEW — Booking Payments: where this owner receives automatic rent payouts
+    // ============================================
+    @Column(name = "payout_upi_id")
+    private String payoutUpiId;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
