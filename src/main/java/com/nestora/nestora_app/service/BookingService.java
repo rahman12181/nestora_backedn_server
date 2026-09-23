@@ -422,8 +422,13 @@ public class BookingService {
                 .coverImage(property != null ? getCoverImage(property) : null)
                 .roomId(booking.getRoom() != null ? booking.getRoom().getId() : null)
                 .roomNumber(booking.getRoom() != null ? booking.getRoom().getRoomNumber() : null)
-                .roomType(booking.getRoom() != null ? String.valueOf(booking.getRoom().getRoomType()) : null)
-                .monthlyRent(booking.getRoom() != null ? booking.getRoom().getMonthlyRent() : null)
+                .roomType(booking.getRoom() != null && booking.getRoom().getRoomType() != null
+                        ? booking.getRoom().getRoomType().name()
+                        : null)
+                // ✅ FIX — BigDecimal → Double with .doubleValue()
+                .monthlyRent(booking.getRoom() != null
+                        ? booking.getRoom().getMonthlyRent().doubleValue()
+                        : null)
                 .moveInDate(booking.getMoveInDate())
                 .durationMonths(booking.getDurationMonths())
                 .message(booking.getMessage())
@@ -444,8 +449,11 @@ public class BookingService {
                 .studentHasActiveBooking(hasActiveBooking)
                 .isRepeatStudent(isRepeat)
 
-                .isPaid(false)
-                .paymentStatus("CREATED")
+                // ✅ PAYMENT FIELDS — actual values from entity
+                .isPaid(booking.getIsPaid() != null ? booking.getIsPaid() : false)
+                .paymentStatus(booking.getPaymentStatus())
+                .paidAmount(booking.getPaidAmount())
+                .paidAt(booking.getPaidAt())
 
                 .isNew(isNew)
                 .isUrgent(isUrgent)

@@ -203,11 +203,12 @@ public class UserService {
                 .durationMonths(request.getDurationMonths())
                 .message(request.getMessage())
                 .status(BookingStatus.PENDING)
+                .isPaid(false)
                 .build();
 
         BookingRequest saved = bookingRequestRepository.save(booking);
 
-        // ✅ ADDED — Owner ko notify karo
+        // ✅ Owner ko notify karo
         User ownerUser = property.getOwner().getUser();
         notificationService.createNotification(
                 ownerUser,
@@ -341,17 +342,26 @@ public class UserService {
                 .build();
     }
 
+    // ✅ FIXED — RoomType enum → String, BigDecimal → Double
     private BookingResponse mapToBookingResponse(BookingRequest booking) {
         return BookingResponse.builder()
                 .requestId(booking.getId())
                 .propertyId(booking.getProperty().getId())
                 .propertyTitle(booking.getProperty().getTitle())
                 .propertyCity(booking.getProperty().getCity())
+                .propertyState(booking.getProperty().getState())
+                .propertyAddress(booking.getProperty().getAddressLine())
                 .coverImage(getCoverImage(booking.getProperty()))
-                .roomId(booking.getRoom() != null ?
-                        booking.getRoom().getId() : null)
-                .roomNumber(booking.getRoom() != null ?
-                        booking.getRoom().getRoomNumber() : null)
+                .roomId(booking.getRoom() != null ? booking.getRoom().getId() : null)
+                .roomNumber(booking.getRoom() != null ? booking.getRoom().getRoomNumber() : null)
+                .roomType(booking.getRoom() != null && booking.getRoom().getRoomType() != null
+                        ? booking.getRoom().getRoomType().name()
+                        : null)
+                .monthlyRent(booking.getRoom() != null
+                        ? booking.getRoom().getMonthlyRent().doubleValue()
+                        : (booking.getProperty().getMonthlyRentMin() != null
+                        ? booking.getProperty().getMonthlyRentMin().doubleValue()
+                        : null))
                 .moveInDate(booking.getMoveInDate())
                 .durationMonths(booking.getDurationMonths())
                 .message(booking.getMessage())
@@ -359,6 +369,10 @@ public class UserService {
                 .ownerResponse(booking.getOwnerResponse())
                 .requestedAt(booking.getRequestedAt())
                 .respondedAt(booking.getRespondedAt())
+                .isPaid(booking.getIsPaid() != null ? booking.getIsPaid() : false)
+                .paymentStatus(booking.getPaymentStatus())
+                .paidAmount(booking.getPaidAmount())
+                .paidAt(booking.getPaidAt())
                 .build();
     }
 

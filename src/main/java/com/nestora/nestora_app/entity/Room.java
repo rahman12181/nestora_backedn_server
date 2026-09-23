@@ -55,11 +55,55 @@ public class Room {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    // ============================================
+    // ✅ NEW — Current Tenant Information
+    // ============================================
+    @Column(name = "current_user_id")
+    private Long currentUserId;
+
+    @Column(name = "current_agreement_id")
+    private Long currentAgreementId;
+
+    @Column(name = "occupied_since")
+    private LocalDateTime occupiedSince;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+    }
+
+    // ============================================
+    // ✅ Helper Methods
+    // ============================================
+    public boolean isOccupied() {
+        return status == RoomStatus.OCCUPIED;
+    }
+
+    public boolean hasTenant() {
+        return currentUserId != null;
+    }
+
+    public void assignTenant(Long userId, Long agreementId) {
+        this.currentUserId = userId;
+        this.currentAgreementId = agreementId;
+        this.occupiedSince = LocalDateTime.now();
+        this.status = RoomStatus.OCCUPIED;
+        if (this.occupiedCount == null) {
+            this.occupiedCount = 0;
+        }
+        this.occupiedCount = this.occupiedCount + 1;
+    }
+
+    public void releaseTenant() {
+        this.currentUserId = null;
+        this.currentAgreementId = null;
+        this.occupiedSince = null;
+        this.status = RoomStatus.AVAILABLE;
+        if (this.occupiedCount != null && this.occupiedCount > 0) {
+            this.occupiedCount = this.occupiedCount - 1;
+        }
     }
 }

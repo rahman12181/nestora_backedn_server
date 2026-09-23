@@ -40,8 +40,9 @@ public class RentPaymentService {
     private final OwnerProfileRepository ownerProfileRepository;
     private final RazorpayOrderService razorpayOrderService;
     private final RazorpayXService razorpayXService;
+    private final RentalAgreementService rentalAgreementService;   // ✅ NEW
 
-    // ================= Discount eligibility (no specific booking needed) =================
+    // ================= Discount eligibility =================
 
     @Transactional(readOnly = true)
     public DiscountEligibilityResponse getDiscountEligibility(User student) {
@@ -82,7 +83,6 @@ public class RentPaymentService {
         ownerProfileRepository.save(owner);
     }
 
-    // ✅ NEW: Get Payout Status
     @Transactional(readOnly = true)
     public PayoutStatusResponse getPayoutStatus(User ownerUser) {
         OwnerProfile owner = ownerProfileRepository.findByUser(ownerUser)
@@ -183,7 +183,7 @@ public class RentPaymentService {
                 .build();
     }
 
-    // ================= Student: initiate payment (create Razorpay order) =================
+    // ================= Student: initiate payment =================
 
     @Transactional
     public InitiatePaymentResponse initiatePayment(User student, Long bookingRequestId, InitiatePaymentRequest request) {
@@ -262,10 +262,12 @@ public class RentPaymentService {
                 .build();
     }
 
-    // ================= Student: confirm payment after Razorpay Checkout success =================
-
+    // ============================================
+    // ✅ ENHANCED — Confirm payment + AUTO-CREATE agreement
+    // ============================================
     @Transactional
-    public RentPaymentResponse confirmPayment(User student, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
+    public RentPaymentResponse confirmPayment(User student, String razorpayOrderId,
+                                              String razorpayPaymentId, String razorpaySignature) {
         RentPayment payment = rentPaymentRepository.findByRazorpayOrderId(razorpayOrderId)
                 .orElseThrow(() -> new AppException("Payment record not found", HttpStatus.NOT_FOUND));
 
@@ -276,7 +278,8 @@ public class RentPaymentService {
             return toResponse(payment);
         }
 
-        boolean validSignature = razorpayOrderService.verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+        boolean validSignature = razorpayOrderService.verifyPaymentSignature(
+                razorpayOrderId, razorpayPaymentId, razorpaySignature);
         if (!validSignature) {
             payment.setStatus(RentPaymentStatus.FAILED);
             rentPaymentRepository.save(payment);
@@ -289,6 +292,19 @@ public class RentPaymentService {
         payment = rentPaymentRepository.save(payment);
 
         triggerOwnerPayout(payment);
+
+        // ============================================
+        // ✅ NEW — Auto-create rental agreement + mark room occupied
+        // ============================================
+        try {
+            rentalAgreementService.createAgreement(payment.getBookingRequest());
+            log.info("Rental agreement auto-created for booking {}",
+                    payment.getBookingRequest().getId());
+        } catch (Exception e) {
+            log.error("Failed to auto-create agreement for booking {}: {}",
+                    payment.getBookingRequest().getId(), e.getMessage());
+            // Don't fail the payment — agreement can be retried
+        }
 
         return toResponse(payment);
     }

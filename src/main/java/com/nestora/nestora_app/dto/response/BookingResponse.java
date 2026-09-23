@@ -1,8 +1,8 @@
 package com.nestora.nestora_app.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nestora.nestora_app.enums.BookingStatus;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,9 +10,13 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BookingResponse {
 
-    // ============ CORE BOOKING ============
+    // ═══════════════════════════════════════════════════════════
+    // BASIC FIELDS
+    // ═══════════════════════════════════════════════════════════
     private Long requestId;
     private Long propertyId;
     private String propertyTitle;
@@ -20,10 +24,18 @@ public class BookingResponse {
     private String propertyState;
     private String propertyAddress;
     private String coverImage;
+
+    // ═══════════════════════════════════════════════════════════
+    // ROOM FIELDS
+    // ═══════════════════════════════════════════════════════════
     private Long roomId;
     private String roomNumber;
     private String roomType;
-    private BigDecimal monthlyRent;
+    private Double monthlyRent;
+
+    // ═══════════════════════════════════════════════════════════
+    // BOOKING FIELDS
+    // ═══════════════════════════════════════════════════════════
     private LocalDate moveInDate;
     private Integer durationMonths;
     private String message;
@@ -32,7 +44,9 @@ public class BookingResponse {
     private LocalDateTime requestedAt;
     private LocalDateTime respondedAt;
 
-    // ============ STUDENT DETAILS ============
+    // ═══════════════════════════════════════════════════════════
+    // STUDENT FIELDS (owner panel ke liye)
+    // ═══════════════════════════════════════════════════════════
     private Long studentId;
     private String studentName;
     private String studentDisplayId;
@@ -45,25 +59,33 @@ public class BookingResponse {
     private Boolean studentHasActiveBooking;
     private Boolean isRepeatStudent;
 
-    // ============ PAYMENT (placeholder) ============
+    // ═══════════════════════════════════════════════════════════
+    // PAYMENT FIELDS
+    // ═══════════════════════════════════════════════════════════
+    @JsonProperty("isPaid")
     private Boolean isPaid;
-    private BigDecimal paidAmount;
+
     private String paymentStatus;
+    private BigDecimal paidAmount;
+    private LocalDateTime paidAt;
     private String couponCode;
     private BigDecimal discountAmount;
     private BigDecimal ownerPayoutAmount;
     private String payoutStatus;
     private String payoutTransactionRef;
-    private LocalDateTime paidAt;
 
-    // ============ UI FLAGS ============
+    // ═══════════════════════════════════════════════════════════
+    // UI FLAGS
+    // ═══════════════════════════════════════════════════════════
     private Boolean isNew;
     private Boolean isUrgent;
     private Boolean hasUnreadMessages;
-    private String conversationId;
-    private Long daysSinceRequested;
+    private Long conversationId;
+    private Long daysSinceRequested; // ✅ Integer → Long (Duration.toDays() long deta hai)
 
-    // ============ PROPERTY CONTEXT ============
+    // ═══════════════════════════════════════════════════════════
+    // PROPERTY CONTEXT
+    // ═══════════════════════════════════════════════════════════
     private Integer availableRooms;
     private Boolean isPropertyPublished;
 }
